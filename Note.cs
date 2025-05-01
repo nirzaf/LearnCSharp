@@ -1,11 +1,8 @@
-using System;
+namespace LearnCSharp;
 
-namespace LearnCSharp
+public class Note
 {
-    public class Note
-    {
-        public string Title { get; set; }
-        public string Content { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
