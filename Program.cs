@@ -1,3 +1,19 @@
-﻿// See https://aka.ms/new-console-template for more information
+using Avalonia;
+using Avalonia.ReactiveUI;
+using Avalonia.Controls.ApplicationLifetimes;
+using System;
 
-Console.WriteLine("Hello, World!");
+namespace LearnCSharp
+{
+    class Program
+    {
+        // Avalonia configuration, don't remove; also used by visual designer.
+        public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UsePlatformDetect().LogToTrace().UseReactiveUI();
+
+        [STAThread]
+        public static void Main(string[] args)
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+    }
+}
