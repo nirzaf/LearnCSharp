@@ -28,9 +28,17 @@ public partial class MainWindow : Window
     private System.Timers.Timer? _autosaveTimer;
     private bool _isSaving = false;
 
+
     public MainWindow()
     {
         InitializeComponent();
+        // Load Supabase config
+        var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+        var supabaseSection = config.GetSection("Supabase");
+        var url = supabaseSection["Url"];
+        var anonKey = supabaseSection["AnonKey"];
+        // Realtime is now handled in SupabaseService
+
         // Defer notes loading until window is shown
         this.Opened += async (_, __) => { InitializeSupabaseAndLoadNotes(); };
 
@@ -54,6 +62,8 @@ public partial class MainWindow : Window
         if (noteContentBox != null) noteContentBox.GetObservable(TextBox.TextProperty).Subscribe(_ => OnNoteEditorChanged());
         AutosaveStatus = this.FindControl<TextBlock>("AutosaveStatus");
     }
+
+
 
     private async void InitializeSupabaseAndLoadNotes()
     {

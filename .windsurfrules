@@ -1,0 +1,2 @@
+Always run 'dotnet build' to build the project after every changes
+Always run 'dotnet run' to run the project after every changes

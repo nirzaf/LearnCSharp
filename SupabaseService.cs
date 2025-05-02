@@ -40,6 +40,16 @@ namespace LearnCSharp
         public async Task InitializeAsync()
         {
             await _client.InitializeAsync();
+
+            // Subscribe to realtime changes on notes table
+            // TODO: Fix realtime subscription when correct ListenType enum is available in SDK
+            // _client.From<NoteModel>()
+            //     .On(Supabase.Postgrest.Constants.ListenType.All, payload =>
+            //     {
+            //         // payload.EventType: "INSERT", "UPDATE", "DELETE"
+            //         _ = GetNotesAsync(); // Fire and forget; ViewModel/UI should reload
+            //     })
+            //     .Subscribe();
         }
 
         public async Task<List<NoteModel>> GetNotesAsync()
