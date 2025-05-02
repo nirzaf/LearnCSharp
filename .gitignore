@@ -3,3 +3,6 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# Ignore appsettings.json (contains secrets/keys)
+appsettings.json

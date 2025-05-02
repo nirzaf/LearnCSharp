@@ -3,6 +3,12 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using System.Threading.Tasks;
+using System.IO;
+using System.Linq;
+using System;
+using Microsoft.Extensions.Configuration; // For config
+
 
 namespace LearnCSharp;
 
@@ -10,11 +16,13 @@ public partial class MainWindow : Window
 {
     private ObservableCollection<Note> Notes = new();
     private string NotesDirectory = "notes";
+    private SupabaseService _supabaseService;
+    private bool _supabaseReady = false;
 
     public MainWindow()
     {
         InitializeComponent();
-        LoadNotes();
+        InitializeSupabaseAndLoadNotes();
         var searchBtn = this.FindControl<Button>("SearchButton");
         if (searchBtn != null) searchBtn.Click += OnSearchClicked;
         var newNoteBtn = this.FindControl<Button>("NewNoteButton");
@@ -23,6 +31,28 @@ public partial class MainWindow : Window
         if (saveNoteBtn != null) saveNoteBtn.Click += OnSaveNoteClicked;
         var notesList = this.FindControl<ListBox>("NotesList");
         if (notesList != null) notesList.SelectionChanged += OnNoteSelected;
+    }
+
+    private async void InitializeSupabaseAndLoadNotes()
+    {
+        try
+        {
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false)
+                .Build();
+            var url = config["Supabase:Url"];
+            var anonKey = config["Supabase:AnonKey"];
+            _supabaseService = new SupabaseService(url, anonKey);
+            await _supabaseService.InitializeAsync();
+            _supabaseReady = true;
+            await LoadNotesAsync();
+        }
+        catch
+        {
+            _supabaseReady = false;
+            LoadNotes(); // fallback to local
+        }
     }
 
     private void InitializeComponent()
@@ -49,6 +79,27 @@ public partial class MainWindow : Window
         if (notesList != null) notesList.ItemsSource = Notes.Select(n => n.Title).ToList();
     }
 
+    private async Task LoadNotesAsync()
+    {
+        Notes.Clear();
+        if (_supabaseService != null && _supabaseReady)
+        {
+            var supabaseNotes = await _supabaseService.GetNotesAsync();
+            foreach (var note in supabaseNotes)
+            {
+                Notes.Add(new Note
+                {
+                    Id = note.Id,
+                    Title = note.Title,
+                    Content = note.Content,
+                    CreatedAt = note.CreatedAt
+                });
+            }
+            var notesList = this.FindControl<ListBox>("NotesList");
+            if (notesList != null) notesList.ItemsSource = Notes.Select(n => n.Title).ToList();
+        }
+    }
+
     private void OnSearchClicked(object? sender, RoutedEventArgs e)
     {
         var query = this.FindControl<TextBox>("SearchBox").Text ?? string.Empty;
@@ -65,17 +116,25 @@ public partial class MainWindow : Window
         if (notesList != null) notesList.SelectedIndex = -1;
     }
 
-    private void OnSaveNoteClicked(object? sender, RoutedEventArgs e)
+    private async void OnSaveNoteClicked(object? sender, RoutedEventArgs e)
     {
         var noteContentBox = this.FindControl<TextBox>("NoteContentBox");
         var content = noteContentBox != null ? noteContentBox.Text ?? string.Empty : string.Empty;
         var title = content.Split('\n').FirstOrDefault()?.Trim();
         if (string.IsNullOrWhiteSpace(title))
             title = "Untitled Note";
-        var note = new Note { Title = title, Content = content, CreatedAt = DateTime.Now };
-        var path = Path.Combine(NotesDirectory, title + ".json");
-        File.WriteAllText(path, JsonSerializer.Serialize(note));
-        LoadNotes();
+        var note = new Note { Title = title, Content = content, CreatedAt = DateTime.UtcNow };
+        if (_supabaseService != null && _supabaseReady)
+        {
+            await _supabaseService.AddNoteAsync(title, content);
+            await LoadNotesAsync();
+        }
+        else
+        {
+            var path = Path.Combine(NotesDirectory, title + ".json");
+            File.WriteAllText(path, JsonSerializer.Serialize(note));
+            LoadNotes();
+        }
     }
 
     private void OnNoteSelected(object? sender, SelectionChangedEventArgs e)
