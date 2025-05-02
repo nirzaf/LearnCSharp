@@ -2,19 +2,31 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="LearnCSharp.MainWindow"
         Title="Note-Taking App" Width="600" Height="400">
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="1.2*,3*">
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="1.2*,3*" MinWidth="320" MinHeight="300">
+    <!-- Responsive: allow columns to grow/shrink -->
     <!-- Sidebar for notes and controls -->
     <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="10,10,10,0">
       <TextBox x:Name="SearchBox" Width="200" Watermark="Search notes..." />
-      <Button x:Name="SearchButton" Content="🔍" Margin="6,0,0,0" Width="36" Height="36" />
-      <Button x:Name="NewNoteButton" Content="＋ New" Margin="6,0,0,0" Width="70" Height="36" />
-      <Button x:Name="SaveNoteButton" Content="💾 Save" Margin="6,0,0,0" Width="70" Height="36" />
-      <Button x:Name="UpdateNoteButton" Content="✏️ Update" Margin="6,0,0,0" Width="80" Height="36" />
-      <Button x:Name="DeleteNoteButton" Content="🗑 Delete" Margin="6,0,0,0" Width="70" Height="36" />
+      <Button x:Name="SearchButton" Margin="6,0,0,0" Width="36" Height="36" ToolTip.Tip="Search">
+        <PathIcon Data="M15.5,14h-.79l-.28-.27A6.471,6.471,0,0,0,16,9.5,6.5,6.5,0,1,0,9.5,16a6.471,6.471,0,0,0,4.23-1.57l.27.28v.79l5,4.99a1,1,0,1,0,1.41-1.41ZM4,9.5A5.5,5.5,0,1,1,9.5,15,5.5,5.5,0,0,1,4,9.5Z" Width="18" Height="18"/>
+      </Button>
+      <Button x:Name="NewNoteButton" Margin="6,0,0,0" Width="36" Height="36" ToolTip.Tip="New Note">
+        <PathIcon Data="M12 5v14m7-7H5" Width="18" Height="18"/>
+      </Button>
+      <Button x:Name="SaveNoteButton" Margin="6,0,0,0" Width="36" Height="36" ToolTip.Tip="Save">
+        <PathIcon Data="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 2v4H7V5h10zm-5 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" Width="18" Height="18"/>
+      </Button>
+      <Button x:Name="UpdateNoteButton" Margin="6,0,0,0" Width="36" Height="36" ToolTip.Tip="Update">
+        <PathIcon Data="M3 17.25V21h3.75l11.06-11.06-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" Width="18" Height="18"/>
+      </Button>
+      <Button x:Name="DeleteNoteButton" Margin="6,0,0,0" Width="36" Height="36" ToolTip.Tip="Delete">
+        <PathIcon Data="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zm3.46-7.12l1.42 1.42L12 13.42l1.12-1.12 1.42-1.42-1.42-1.42L12 10.58l-1.12-1.12-1.42 1.42zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" Width="18" Height="18"/>
+      </Button>
       <TextBlock x:Name="AutosaveStatus" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#888" FontStyle="Italic"/>
     </StackPanel>
     <!-- Sidebar: Notes List with metadata -->
-    <ListBox x:Name="NotesList" Grid.Row="1" Grid.Column="0" Margin="10,10,0,10" Width="220" SelectionMode="Single">
+    <ListBox x:Name="NotesList" Grid.Row="1" Grid.Column="0" Margin="10,10,0,10" MinWidth="140" MaxWidth="320" SelectionMode="Single">
+      <!-- Responsive: Min/Max width for sidebar -->
       <ListBox.ItemTemplate>
         <DataTemplate>
           <StackPanel Margin="0,6,0,6">
@@ -26,7 +38,8 @@
       </ListBox.ItemTemplate>
     </ListBox>
     <!-- Main Editor -->
-    <Border Grid.Row="1" Grid.Column="1" Margin="10,10,10,10" Background="#FFF" CornerRadius="8" Padding="16" BoxShadow="0 2 8 0 #bbb">
+    <Border Grid.Row="1" Grid.Column="1" Margin="10,10,10,10" Background="#FFF" CornerRadius="8" Padding="16" BoxShadow="0 2 8 0 #bbb" MinWidth="180" MinHeight="180">
+      <!-- Responsive: Min sizes for editor -->
       <StackPanel>
         <TextBox x:Name="NoteTitleBox" FontWeight="Bold" FontSize="18" Margin="0,0,0,8" Watermark="Note Title..." />
         <TextBox x:Name="NoteContentBox" AcceptsReturn="True" FontSize="15" Height="250" Watermark="Type your note here..." />
