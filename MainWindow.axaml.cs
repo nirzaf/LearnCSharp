@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration; // For config
 
 namespace LearnCSharp;
 
+
 public partial class MainWindow : Window
 {
     private ObservableCollection<Note> Notes = new();
@@ -30,7 +31,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        InitializeSupabaseAndLoadNotes();
+        // Defer notes loading until window is shown
+        this.Opened += async (_, __) => { InitializeSupabaseAndLoadNotes(); };
+
         var searchBtn = this.FindControl<Button>("SearchButton");
         if (searchBtn != null) searchBtn.Click += OnSearchClicked;
         var newNoteBtn = this.FindControl<Button>("NewNoteButton");
@@ -39,6 +42,8 @@ public partial class MainWindow : Window
         if (saveNoteBtn != null) saveNoteBtn.Click += OnSaveNoteClicked;
         var updateNoteBtn = this.FindControl<Button>("UpdateNoteButton");
         if (updateNoteBtn != null) updateNoteBtn.Click += OnUpdateNoteClicked;
+        var themeToggleBtn = this.FindControl<Button>("ThemeToggleButton");
+        if (themeToggleBtn != null) themeToggleBtn.Click += OnThemeToggleClicked;
         var deleteNoteBtn = this.FindControl<Button>("DeleteNoteButton");
         if (deleteNoteBtn != null) deleteNoteBtn.Click += OnDeleteNoteClicked;
         var notesList = this.FindControl<ListBox>("NotesList");
@@ -65,10 +70,11 @@ public partial class MainWindow : Window
             _supabaseReady = true;
             await LoadNotesAsync();
         }
-        catch
+        catch (Exception ex)
         {
             _supabaseReady = false;
             LoadNotes(); // fallback to local
+            await ShowMessageBox($"Failed to load notes from Supabase: {ex.Message}");
         }
     }
 
@@ -82,16 +88,20 @@ public partial class MainWindow : Window
         Notes.Clear();
         if (!Directory.Exists(NotesDirectory))
             Directory.CreateDirectory(NotesDirectory);
+        var loadedNotes = new List<Note>();
         foreach (var file in Directory.GetFiles(NotesDirectory, "*.json"))
         {
             try
             {
                 var note = JsonSerializer.Deserialize<Note>(File.ReadAllText(file));
                 if (note != null)
-                    Notes.Add(note);
+                    loadedNotes.Add(note);
             }
             catch { }
         }
+        // Sort by UpdatedAt descending
+        foreach (var note in loadedNotes.OrderByDescending(n => n.UpdatedAt))
+            Notes.Add(note);
         var notesList = this.FindControl<ListBox>("NotesList");
         if (notesList != null) notesList.ItemsSource = Notes.Select(n => n.Title).ToList();
     }
@@ -306,5 +316,15 @@ public partial class MainWindow : Window
                 autosaveStatus.Text = status;
             }
         });
+    }
+
+    private void OnThemeToggleClicked(object? sender, RoutedEventArgs e)
+    {
+        var app = Application.Current;
+        if (app is null) return;
+        if (app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Dark)
+            app.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+        else
+            app.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
     }
 }
