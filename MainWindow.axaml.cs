@@ -32,6 +32,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // Set default theme
+        Classes.Add("Light");
+        
         // Load Supabase config
         var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
         var supabaseSection = config.GetSection("Supabase");
@@ -42,8 +45,9 @@ public partial class MainWindow : Window
         // Defer notes loading until window is shown
         this.Opened += async (_, __) => { InitializeSupabaseAndLoadNotes(); };
 
-        var searchBtn = this.FindControl<Button>("SearchButton");
-        if (searchBtn != null) searchBtn.Click += OnSearchClicked;
+        var searchBox = this.FindControl<TextBox>("SearchBox");
+        if (searchBox != null)
+            searchBox.GetObservable(TextBox.TextProperty).Subscribe(_ => FilterNotesBySearch());
         var newNoteBtn = this.FindControl<Button>("NewNoteButton");
         if (newNoteBtn != null) newNoteBtn.Click += OnNewNoteClicked;
         var saveNoteBtn = this.FindControl<Button>("SaveNoteButton");
@@ -138,12 +142,21 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnSearchClicked(object? sender, RoutedEventArgs e)
+    private void FilterNotesBySearch()
     {
-        var query = this.FindControl<TextBox>("SearchBox").Text ?? string.Empty;
-        var filtered = Notes.Where(n => n.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || n.Content.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        var searchBox = this.FindControl<TextBox>("SearchBox");
+        var query = searchBox?.Text ?? string.Empty;
         var notesList = this.FindControl<ListBox>("NotesList");
-        if (notesList != null) notesList.ItemsSource = filtered.Select(n => n.Title).ToList();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            if (notesList != null) notesList.ItemsSource = Notes;
+            return;
+        }
+        var filtered = Notes.Where(n =>
+            (!string.IsNullOrEmpty(n.Title) && n.Title.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrEmpty(n.Content) && n.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
+        if (notesList != null) notesList.ItemsSource = filtered;
     }
 
     private void OnNewNoteClicked(object? sender, RoutedEventArgs e)
@@ -330,11 +343,16 @@ public partial class MainWindow : Window
 
     private void OnThemeToggleClicked(object? sender, RoutedEventArgs e)
     {
-        var app = Application.Current;
-        if (app is null) return;
-        if (app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Dark)
-            app.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+        // Toggle between Light and Dark classes
+        if (Classes.Contains("Dark"))
+        {
+            Classes.Remove("Dark");
+            Classes.Add("Light");
+        }
         else
-            app.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+        {
+            Classes.Remove("Light");
+            Classes.Add("Dark");
+        }
     }
 }
