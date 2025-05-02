@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -19,6 +20,13 @@ public partial class MainWindow : Window
     private SupabaseService _supabaseService;
     private bool _supabaseReady = false;
 
+    private Note? _selectedNote = null;
+    private string _lastSavedTitle = string.Empty;
+    private string _lastSavedContent = string.Empty;
+    private DateTime _lastSavedUpdatedAt = DateTime.MinValue;
+    private System.Timers.Timer? _autosaveTimer;
+    private bool _isSaving = false;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -29,8 +37,17 @@ public partial class MainWindow : Window
         if (newNoteBtn != null) newNoteBtn.Click += OnNewNoteClicked;
         var saveNoteBtn = this.FindControl<Button>("SaveNoteButton");
         if (saveNoteBtn != null) saveNoteBtn.Click += OnSaveNoteClicked;
+        var updateNoteBtn = this.FindControl<Button>("UpdateNoteButton");
+        if (updateNoteBtn != null) updateNoteBtn.Click += OnUpdateNoteClicked;
+        var deleteNoteBtn = this.FindControl<Button>("DeleteNoteButton");
+        if (deleteNoteBtn != null) deleteNoteBtn.Click += OnDeleteNoteClicked;
         var notesList = this.FindControl<ListBox>("NotesList");
         if (notesList != null) notesList.SelectionChanged += OnNoteSelected;
+        var noteTitleBox = this.FindControl<TextBox>("NoteTitleBox");
+        var noteContentBox = this.FindControl<TextBox>("NoteContentBox");
+        if (noteTitleBox != null) noteTitleBox.GetObservable(TextBox.TextProperty).Subscribe(_ => OnNoteEditorChanged());
+        if (noteContentBox != null) noteContentBox.GetObservable(TextBox.TextProperty).Subscribe(_ => OnNoteEditorChanged());
+        AutosaveStatus = this.FindControl<TextBlock>("AutosaveStatus");
     }
 
     private async void InitializeSupabaseAndLoadNotes()
@@ -92,11 +109,12 @@ public partial class MainWindow : Window
                     Id = note.Id,
                     Title = note.Title,
                     Content = note.Content,
-                    CreatedAt = note.CreatedAt
+                    CreatedAt = note.CreatedAt,
+                    UpdatedAt = note.UpdatedAt
                 });
             }
             var notesList = this.FindControl<ListBox>("NotesList");
-            if (notesList != null) notesList.ItemsSource = Notes.Select(n => n.Title).ToList();
+            if (notesList != null) notesList.ItemsSource = Notes;
         }
     }
 
@@ -118,12 +136,15 @@ public partial class MainWindow : Window
 
     private async void OnSaveNoteClicked(object? sender, RoutedEventArgs e)
     {
+        var noteTitleBox = this.FindControl<TextBox>("NoteTitleBox");
         var noteContentBox = this.FindControl<TextBox>("NoteContentBox");
-        var content = noteContentBox != null ? noteContentBox.Text ?? string.Empty : string.Empty;
-        var title = content.Split('\n').FirstOrDefault()?.Trim();
-        if (string.IsNullOrWhiteSpace(title))
-            title = "Untitled Note";
-        var note = new Note { Title = title, Content = content, CreatedAt = DateTime.UtcNow };
+        var title = noteTitleBox?.Text ?? string.Empty;
+        var content = noteContentBox?.Text ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            await ShowMessageBox("Cannot save empty note.");
+            return;
+        }
         if (_supabaseService != null && _supabaseReady)
         {
             await _supabaseService.AddNoteAsync(title, content);
@@ -131,18 +152,159 @@ public partial class MainWindow : Window
         }
         else
         {
+            var note = new Note { Title = title, Content = content, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
             var path = Path.Combine(NotesDirectory, title + ".json");
             File.WriteAllText(path, JsonSerializer.Serialize(note));
             LoadNotes();
         }
+        SetAutosaveStatus("Saved");
     }
 
     private void OnNoteSelected(object? sender, SelectionChangedEventArgs e)
     {
         var listBox = this.FindControl<ListBox>("NotesList");
-        var selectedTitle = listBox?.SelectedItem as string;
-        var note = Notes.FirstOrDefault(n => n.Title == selectedTitle);
+        var note = listBox?.SelectedItem as Note;
+        _selectedNote = note;
+        var noteTitleBox = this.FindControl<TextBox>("NoteTitleBox");
         var noteContentBox = this.FindControl<TextBox>("NoteContentBox");
+        if (noteTitleBox != null) noteTitleBox.Text = note?.Title ?? string.Empty;
         if (noteContentBox != null) noteContentBox.Text = note?.Content ?? string.Empty;
+        _lastSavedTitle = note?.Title ?? string.Empty;
+        _lastSavedContent = note?.Content ?? string.Empty;
+        _lastSavedUpdatedAt = note?.UpdatedAt ?? DateTime.MinValue;
+        SetAutosaveStatus("Loaded");
+    }
+
+    private async void OnDeleteNoteClicked(object? sender, RoutedEventArgs e)
+    {
+        var listBox = this.FindControl<ListBox>("NotesList");
+        var note = listBox?.SelectedItem as Note;
+        if (note == null)
+        {
+            await ShowMessageBox("Please select a note to delete.");
+            return;
+        }
+        if (_supabaseService != null && _supabaseReady)
+        {
+            await _supabaseService.DeleteNoteAsync(note.Id);
+            await LoadNotesAsync();
+        }
+        else
+        {
+            var path = Path.Combine(NotesDirectory, note.Title + ".json");
+            if (File.Exists(path))
+                File.Delete(path);
+            LoadNotes();
+        }
+        var noteTitleBox = this.FindControl<TextBox>("NoteTitleBox");
+        var noteContentBox = this.FindControl<TextBox>("NoteContentBox");
+        if (noteTitleBox != null) noteTitleBox.Text = string.Empty;
+        if (noteContentBox != null) noteContentBox.Text = string.Empty;
+        if (listBox != null) listBox.SelectedIndex = -1;
+        SetAutosaveStatus("");
+    }
+
+    private async Task ShowMessageBox(string message)
+    {
+        var dialog = new Window
+        {
+            Title = "Info",
+            Width = 300,
+            Height = 150,
+            Content = new StackPanel
+            {
+                Margin = new Thickness(10),
+                Children =
+                {
+                    new TextBlock { Text = message, Margin = new Thickness(0,20,0,20), TextAlignment = Avalonia.Media.TextAlignment.Center },
+                    new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Width = 60 }
+                }
+            }
+        };
+        var okButton = ((dialog.Content as StackPanel)?.Children[1]) as Button;
+        if (okButton != null)
+        {
+            okButton.Click += (_, __) => dialog.Close();
+        }
+        await dialog.ShowDialog((Window)this);
+    }
+
+    // --- Yandex Notes-style update/autosave logic ---
+    private void OnNoteEditorChanged()
+    {
+        if (_autosaveTimer != null)
+        {
+            _autosaveTimer.Stop();
+            _autosaveTimer.Dispose();
+        }
+        _autosaveTimer = new System.Timers.Timer(2000); // 2 seconds debounce
+        _autosaveTimer.Elapsed += async (s, e) => await AutosaveNoteAsync();
+        _autosaveTimer.AutoReset = false;
+        _autosaveTimer.Start();
+        SetAutosaveStatus("Saving...");
+    }
+
+    private async Task AutosaveNoteAsync()
+    {
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            if (_isSaving) return;
+            _isSaving = true;
+            var noteTitleBox = this.FindControl<TextBox>("NoteTitleBox");
+            var noteContentBox = this.FindControl<TextBox>("NoteContentBox");
+            var title = noteTitleBox?.Text ?? string.Empty;
+            var content = noteContentBox?.Text ?? string.Empty;
+            if (_selectedNote == null || (title == _lastSavedTitle && content == _lastSavedContent))
+            {
+                SetAutosaveStatus("Up to date");
+                _isSaving = false;
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                SetAutosaveStatus("Cannot autosave empty note");
+                _isSaving = false;
+                return;
+            }
+            try
+            {
+                if (_supabaseService != null && _supabaseReady)
+                {
+                    await _supabaseService.UpdateNoteAsync(_selectedNote.Id, title, content);
+                    await LoadNotesAsync();
+                }
+                else
+                {
+                    var note = new Note { Id = _selectedNote.Id, Title = title, Content = content, CreatedAt = _selectedNote.CreatedAt, UpdatedAt = DateTime.UtcNow };
+                    var path = Path.Combine(NotesDirectory, title + ".json");
+                    File.WriteAllText(path, JsonSerializer.Serialize(note));
+                    LoadNotes();
+                }
+                _lastSavedTitle = title;
+                _lastSavedContent = content;
+                SetAutosaveStatus("Saved");
+            }
+            catch
+            {
+                SetAutosaveStatus("Autosave failed");
+            }
+            _isSaving = false;
+        });
+    }
+
+    private async void OnUpdateNoteClicked(object? sender, RoutedEventArgs e)
+    {
+        await AutosaveNoteAsync();
+    }
+
+    private void SetAutosaveStatus(string status)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => {
+            var autosaveStatus = this.FindControl<TextBlock>("AutosaveStatus");
+            if (autosaveStatus != null)
+            {
+                autosaveStatus.Text = status;
+            }
+        });
     }
 }

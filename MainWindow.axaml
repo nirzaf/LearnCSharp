@@ -2,16 +2,35 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="LearnCSharp.MainWindow"
         Title="Note-Taking App" Width="600" Height="400">
-  <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,3*">
-    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Margin="10">
-      <TextBox x:Name="SearchBox" Width="300" Watermark="Search notes..." />
-      <Button x:Name="SearchButton" Content="Search" Margin="10,0,0,0" />
-      <Button x:Name="NewNoteButton" Content="New Note" Margin="10,0,0,0" />
-      <Button x:Name="SaveNoteButton" Content="Save Note" Margin="10,0,0,0" />
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="1.2*,3*">
+    <!-- Sidebar for notes and controls -->
+    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="10,10,10,0">
+      <TextBox x:Name="SearchBox" Width="200" Watermark="Search notes..." />
+      <Button x:Name="SearchButton" Content="🔍" Margin="6,0,0,0" Width="36" Height="36" />
+      <Button x:Name="NewNoteButton" Content="＋ New" Margin="6,0,0,0" Width="70" Height="36" />
+      <Button x:Name="SaveNoteButton" Content="💾 Save" Margin="6,0,0,0" Width="70" Height="36" />
+      <Button x:Name="UpdateNoteButton" Content="✏️ Update" Margin="6,0,0,0" Width="80" Height="36" />
+      <Button x:Name="DeleteNoteButton" Content="🗑 Delete" Margin="6,0,0,0" Width="70" Height="36" />
+      <TextBlock x:Name="AutosaveStatus" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#888" FontStyle="Italic"/>
     </StackPanel>
-    <ListBox x:Name="NotesList" Grid.Row="1" Grid.Column="0" Margin="10" />
-    <ScrollViewer Grid.Row="1" Grid.Column="1" Margin="10">
-      <TextBox x:Name="NoteContentBox" AcceptsReturn="True" />
-    </ScrollViewer>
+    <!-- Sidebar: Notes List with metadata -->
+    <ListBox x:Name="NotesList" Grid.Row="1" Grid.Column="0" Margin="10,10,0,10" Width="220" SelectionMode="Single">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="0,6,0,6">
+            <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="16" />
+            <TextBlock Text="{Binding UpdatedAt, StringFormat='Updated: {0:yyyy-MM-dd HH:mm}'}" FontSize="12" Foreground="#666" />
+            <TextBlock Text="{Binding CreatedAt, StringFormat='Created: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="#aaa" />
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <!-- Main Editor -->
+    <Border Grid.Row="1" Grid.Column="1" Margin="10,10,10,10" Background="#FFF" CornerRadius="8" Padding="16" BoxShadow="0 2 8 0 #bbb">
+      <StackPanel>
+        <TextBox x:Name="NoteTitleBox" FontWeight="Bold" FontSize="18" Margin="0,0,0,8" Watermark="Note Title..." />
+        <TextBox x:Name="NoteContentBox" AcceptsReturn="True" FontSize="15" Height="250" Watermark="Type your note here..." />
+      </StackPanel>
+    </Border>
   </Grid>
 </Window>

@@ -21,6 +21,8 @@ namespace LearnCSharp
         public string Content { get; set; }
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; }
     }
 
     public class SupabaseService
@@ -48,13 +50,33 @@ namespace LearnCSharp
 
         public async Task AddNoteAsync(string title, string content)
         {
+            var now = DateTime.UtcNow;
             var note = new NoteModel
             {
                 Title = title,
                 Content = content,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
             await _client.From<NoteModel>().Insert(note);
+        }
+
+        public async Task UpdateNoteAsync(Guid id, string title, string content)
+        {
+            var now = DateTime.UtcNow;
+            var update = new NoteModel
+            {
+                Id = id,
+                Title = title,
+                Content = content,
+                UpdatedAt = now
+            };
+            await _client.From<NoteModel>().Where(x => x.Id == id).Update(update);
+        }
+
+        public async Task DeleteNoteAsync(Guid id)
+        {
+            await _client.From<NoteModel>().Where(x => x.Id == id).Delete();
         }
     }
 }
