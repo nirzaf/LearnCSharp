@@ -8,10 +8,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="11.0.6" />
-      <PackageReference Include="Avalonia.Desktop" Version="11.0.6" />
-      <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.6" />
-      <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.6" />
+      <PackageReference Include="Avalonia" Version="11.3.0" />
+      <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.0" />
+      <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.4" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.4" />
       <PackageReference Include="Supabase" Version="1.1.1" />
